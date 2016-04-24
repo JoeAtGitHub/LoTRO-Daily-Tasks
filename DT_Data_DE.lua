@@ -227,7 +227,7 @@ DT_Data = {
 		["0F796"] = { N="Zerbrochene Holzkeule", H={ [46]="--", [47]="CN,LF,--" },
 				L = { ["Echad Mirobel"] = 41, ["Echad Dunann"] = 41,
 					["Gwingris"] = 41, ["Suri-kylä"] = 36, ["Gath Forthnir"] = 47 } },
-		["0F78F"] = { N="Broken Wooden Mace", H={ [16]="MB", [20.1]="TE" },
+		["0F78F"] = { N="Zerbrochener Holz-Streitkolben", H={ [16]="MB", [20.1]="TE" },
 				L = { ["Verlassene Herberge"] = 15, ["Bree"] = 16 } },
 		["0DBA9"] = { N="Wulstiger Schleim", H={ [20]="MB" },
 				L = { ["Bree"] = 20 } },
