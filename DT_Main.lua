@@ -1,20 +1,22 @@
 -- Daily Tasks reference plugin by David Down
+-- Created from DT_Main.lua Version 3.5 by CDC
+-- Fixes settings localization problem
 -- coding: utf-8 'ä
 import "Turbine"
 import "Turbine.Gameplay"
 
 function print(text) Turbine.Shell.WriteLine("<rgb=#00FFFF>DT:</rgb> "..text) end
 RepOnly = false
-Homestead = false
 
 import "Vinny.Common"
 import "Vinny.Common.EII_ID"
-if false or (Turbine.Shell.IsCommand("conseil")) then -- French?
-  import "Vinny.DailyTasks.DT_Data_FR"
-  print("French data")
-elseif (Turbine.Shell.IsCommand("zusatzmodule")) then -- German?
-  import "Vinny.DailyTasks.DT_Data_DE"
-  print("German data")
+language = Turbine.Engine.GetLanguage()
+if language==Turbine.Language.French then
+	import "Vinny.DailyTasks.DT_Data_FR"
+	print("French data")
+elseif language==Turbine.Language.German then
+	import "Vinny.DailyTasks.DT_Data_DE"
+	print("German data")
 else import "Vinny.DailyTasks.DT_Data" end
 import "Vinny.DailyTasks.DT_Locations"
 
@@ -30,13 +32,11 @@ all,dtu,dtx = true
 
 function printh(text) print("<rgb=#00FF00>"..text.."</rgb>") end
 function printe(text) print("<rgb=#FF6040>Error: "..text.."</rgb>") end
-DT_Settings = Turbine.PluginData.Load(Turbine.DataScope.Server,"DailyTasks_Settings")
+
 local DTv = "Daily Tasks "..Plugins["DailyTasks"]:GetVersion()
-if type(DT_Settings) ~= "table" then
-	DT_Settings = {names=true, player={}, rep={} }
-    print(DTv..", settings initialized.")
-else print(DTv..", settings loaded.") end
-if DT_Settings.names==nil then DT_Settings.names=true end -- default to true
+import "Vinny.DailyTasks.DT_Settings"
+DT_Settings = DT_LoadSettings(DTv,"DailyTasks_Settings")
+
 player = Turbine.Gameplay.LocalPlayer.GetInstance()
 pname = player:GetName()
 if pname:sub(1,1)=="~" then
@@ -102,10 +102,14 @@ function DT_Lvl(c,l,r)
 		if l.r then r = l.r end
 		return c,ll,r
 	end
-	local tl = DT_Data.lmap[l]
-	if tl then l = tl	-- Remap task level?
+	if l==75 then l=68	-- Great River
+	elseif l==80 then l=75 -- East Rohan
+	elseif l==85 then l=80 -- Forlaw
+	elseif l==86 then l=81 -- West Rohan
+	elseif l==90 then l=90 -- West Gondor
+	elseif l==100 then l=95 -- Central/East Gondor
 	elseif l>60 then l = l-4	-- Dunland
-	elseif l>50 then l=46 end -- Moria
+	elseif l>50 then l=50 end -- Moria
 	return c,l,r
 end
 
@@ -147,7 +151,7 @@ function DT_Print(id,item,nr,dtm)
     if dtx==2 then return 0 end
 	local xname = string.format(xlink,id,item.N)
 	local cnt,clr,av = 0,yel,false
-	local C,min,alts = 10,999,""
+	local C,min,alts = 10,99,""
 	if item.C then C = item.C end
 	if nr>=C then clr = grn end
 	local str = string.format("<rgb=#%s>%2d/%2d</rgb> %s",clr,nr,C,xname)
@@ -160,7 +164,6 @@ function DT_Print(id,item,nr,dtm)
 	end
 	table.sort(ix,loc_comp)
 	local rl,kr = {}, DT_Settings.rep[pname] or {}
-	local ht,bb,bl = item.H
 	for i,loc in ipairs(ix) do
 		local lt = DT_Data.loc[loc]
 		local rep = DT_Data.rz[loc] or lt.rep
@@ -171,21 +174,8 @@ function DT_Print(id,item,nr,dtm)
 			else clr = grn; av = true end
 			if all or clr==grn or dtx then
 				rl[rep] = true
-				local cr = kr[rep] and "<rgb=#FF0000>"..rep.."</rgb>" or rep
-				if Homestead then
-				  if not ht then print("No Homestead data for "..item.N) return 0 end
-				  for hl,hr in pairs(ht) do
-				    if string.match(hr,rep) then
-					  bl = math.ceil(hl/10)*10
-					  bb = (bl-9).."-"..bl
-					  local tl = math.floor(hl)
-					  str = str..string.format(", <rgb=#%s>%d</rgb>%s @ %s(%s)",clr,tl,c,bb,cr)
-					  break
-					end
-				  end
-				else
-				  str = str..string.format(", <rgb=#%s>%d</rgb>%s @ %s(%s)",clr,ll,c,loc,cr)
-				end
+				if kr[rep] then rep = "<rgb=#FF0000>"..rep.."</rgb>" end
+				str = str..string.format(", <rgb=#%s>%d</rgb>%s @ %s(%s)",clr,ll,c,loc,rep)
 			end
 			if ll<min then min = ll end
 		end
@@ -298,12 +288,11 @@ function DT_Command:Execute( cmd,args,lvl )
 		local ti = DT_Backpack()
 		if not next(ti) then
 			printe("No trophy items to check.") return end
-		local store,label = player:GetSharedStorage(), "Shared Storage"
-		if args=="v" then store,label = player:GetVault(), "Vault" end
-		if store:IsAvailable() then
-			printh("Duplicate "..label.." trophy items(B,S):")
-			local si,cnt = {}, store:GetCapacity()
-			DT_list,pack = {}, store
+		local shared = player:GetSharedStorage()
+		if shared:IsAvailable() then
+			printh("Duplicate Shared Storage trophy items(B,S):")
+			local si,cnt = {}, shared:GetCapacity()
+			DT_list,pack = {}, shared
 			for i=0,cnt do DT_Item(i,si) end
 			for name,t in pairs(ti) do
 				if si[name] then
@@ -313,7 +302,7 @@ function DT_Command:Execute( cmd,args,lvl )
 				end
 			end
 			DT_list = nil
-		else printe(label.." not available.") end
+		else printe("Shared Storage not available.") end
 		return
 	end
 	if cmd=="dtt" then
@@ -576,8 +565,7 @@ Plugins.DailyTasks.Unload = function(sender,args)
 	pname = player:GetName()
 	if pname:sub(1,1)=="~" then return end -- session play?
 	DT_Settings.player[pname] = player:GetLevel()
-    Turbine.PluginData.Save(Turbine.DataScope.Server,"DailyTasks_Settings",DT_Settings)
-    print(DTv..", settings saved.")
+	DT_SaveSettings(DTv,"DailyTasks_Settings")
 end
 
 -- Options panel
