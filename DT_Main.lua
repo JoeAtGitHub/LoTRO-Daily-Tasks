@@ -9,12 +9,13 @@ Homestead = false
 
 import "Vinny.Common"
 import "Vinny.Common.EII_ID"
-if false or (Turbine.Shell.IsCommand("conseil")) then -- French?
-  import "Vinny.DailyTasks.DT_Data_FR"
-  print("French data")
-elseif (Turbine.Shell.IsCommand("zusatzmodule")) then -- German?
-  import "Vinny.DailyTasks.DT_Data_DE"
-  print("German data")
+language = Turbine.Engine.GetLanguage()
+if language==Turbine.Language.French then
+	import "Vinny.DailyTasks.DT_Data_FR"
+	print("French data")
+elseif language==Turbine.Language.German then
+	import "Vinny.DailyTasks.DT_Data_DE"
+	print("German data")
 else import "Vinny.DailyTasks.DT_Data" end
 import "Vinny.DailyTasks.DT_Locations"
 
@@ -30,13 +31,11 @@ all,dtu,dtx = true
 
 function printh(text) print("<rgb=#00FF00>"..text.."</rgb>") end
 function printe(text) print("<rgb=#FF6040>Error: "..text.."</rgb>") end
-DT_Settings = Turbine.PluginData.Load(Turbine.DataScope.Server,"DailyTasks_Settings")
+
 local DTv = "Daily Tasks "..Plugins["DailyTasks"]:GetVersion()
-if type(DT_Settings) ~= "table" then
-	DT_Settings = {names=true, player={}, rep={} }
-    print(DTv..", settings initialized.")
-else print(DTv..", settings loaded.") end
-if DT_Settings.names==nil then DT_Settings.names=true end -- default to true
+import "Vinny.DailyTasks.DT_Settings"
+DT_Settings = DT_LoadSettings(DTv,"DailyTasks_Settings")
+
 player = Turbine.Gameplay.LocalPlayer.GetInstance()
 pname = player:GetName()
 if pname:sub(1,1)=="~" then
@@ -349,6 +348,11 @@ function DT_Command:Execute( cmd,args,lvl )
     	print((gr and "Enabled" or "Disabled").." Great River location consolidation.")
     	return
     end
+	if args=="ho" then
+		Homestead = not Homestead
+		print((Homestead and "Enabled " or "Disabled ").."Homestead.")
+		return
+	end
 	local str = all and "" or dtu and " that can be used" or " that can be turned in"
 	if cmd=="dtj" then str = " that are junk"; dtx = 2
 	elseif dtx then str = " that can't be used" end
@@ -576,8 +580,7 @@ Plugins.DailyTasks.Unload = function(sender,args)
 	pname = player:GetName()
 	if pname:sub(1,1)=="~" then return end -- session play?
 	DT_Settings.player[pname] = player:GetLevel()
-    Turbine.PluginData.Save(Turbine.DataScope.Server,"DailyTasks_Settings",DT_Settings)
-    print(DTv..", settings saved.")
+	DT_SaveSettings(DTv,"DailyTasks_Settings")
 end
 
 -- Options panel
